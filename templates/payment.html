@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pembayaran DP Loker</title>
+    <script type="text/javascript"
+            src="https://app.sandbox.midtrans.com/snap/snap.js"
+            data-client-key="{{ client_key }}"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body class="p-5 text-center bg-light">
+    
+    <div class="card mx-auto shadow" style="width: 22rem;">
+        <div class="card-header bg-primary text-white">
+            <h4>Konfirmasi Booking</h4>
+        </div>
+        <div class="card-body">
+            <h5 class="card-title">Loker Nomor {{ loker.nomor }}</h5>
+            <p class="text-muted">{{ loker.lokasi }}</p>
+            
+            <hr>
+            <div class="d-flex justify-content-between">
+                <span>Total Harga Sewa:</span>
+                <span class="text-decoration-line-through text-muted">Rp {{ harga_full }}</span>
+            </div>
+            <div class="d-flex justify-content-between fw-bold text-success mt-2">
+                <span>Bayar Sekarang (DP 50%):</span>
+                <span>Rp {{ harga_dp }}</span>
+            </div>
+            <hr>
+
+            <button id="pay-button" class="btn btn-warning w-100 fw-bold">BAYAR DP SEKARANG</button>
+        </div>
+    </div>
+    
+    <br>
+    <a href="/dashboard" class="text-decoration-none">Batal Booking</a>
+
+    <script type="text/javascript">
+      var payButton = document.getElementById('pay-button');
+      payButton.addEventListener('click', function () {
+        window.snap.pay('{{ token }}', {
+          onSuccess: function(result){
+            // Kalau sukses, arahkan ke route update database
+            window.location.href = "/payment-success/{{ loker.id }}";
+          },
+          onPending: function(result){
+            alert("Menunggu pembayaran...");
+          },
+          onError: function(result){
+            alert("Pembayaran gagal!");
+          },
+          onClose: function(){
+            alert('Kamu belum menyelesaikan pembayaran DP!');
+          }
+        });
+      });
+    </script>
+</body>
+</html>
