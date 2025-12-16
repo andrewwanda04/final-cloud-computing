@@ -1,0 +1,17 @@
+name: Deployment Pipeline
+
+on:
+  push:
+    branches: [ main ] # Jalankan otomatis saat push ke branch main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Deploy to Render
+        # Perintah ini akan memicu deploy ulang di Render lewat Hook URL
+        run: |
+          curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
