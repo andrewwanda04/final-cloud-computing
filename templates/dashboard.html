@@ -1,24 +1,60 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <title>Dashboard</title>
+    <title>Dashboard Smart Locker</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-light">
     
-    <nav class="navbar navbar-dark bg-primary mb-4 px-4">
-        <a class="navbar-brand fw-bold" href="/"><i class="bi bi-box-seam"></i> Smart Locker</a>
+    <nav class="navbar navbar-dark bg-primary mb-4 px-4 shadow-sm">
+        <a class="navbar-brand fw-bold" href="/"><i class="bi bi-box-seam"></i> Smart Locker System</a>
         <div class="d-flex align-items-center text-white">
-            <span class="me-3">Halo, {{ user.username }} ({{ user.role }})</span>
+            <span class="me-3"><i class="bi bi-person-circle"></i> {{ user.username }} ({{ user.role }})</span>
             <a href="/logout" class="btn btn-danger btn-sm">Logout</a>
         </div>
     </nav>
 
     <div class="container">
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        {% if user.is_subscribed %}
+        <div class="card bg-primary text-white mb-4 shadow border-0">
+            <div class="card-body d-flex justify-content-between align-items-center p-4">
+                <div>
+                    <h3 class="fw-bold mb-0"><i class="bi bi-patch-check-fill"></i> Paket Premium Aktif</h3>
+                    <p class="mb-0 opacity-75">
+                        Berlaku sampai: <strong>{{ user.subscription_end.strftime('%d %B %Y - %H:%M') }}</strong>
+                    </p>
+                </div>
+                <div class="text-end">
+                    <span class="badge bg-white text-primary fs-6 px-3 py-2 rounded-pill">Member</span>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-warning border-0 shadow-sm d-flex align-items-center mb-4" role="alert">
+            <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
+            <div>
+                <strong>Status: Belum Berlangganan</strong>
+                <div class="small">Silakan pilih loker di bawah untuk mulai sewa.</div>
+            </div>
+        </div>
+        {% endif %}
+
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2>Status Loker</h2>
-            
+            <h2 class="fw-bold text-dark"><i class="bi bi-grid-3x3-gap"></i> Status Loker</h2>
             {% if user.role == 'admin' %}
             <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addModal">
                 <i class="bi bi-plus-circle"></i> Tambah Loker
@@ -32,23 +68,64 @@
                 <div class="card h-100 shadow-sm border-0">
                     <div class="card-body text-center p-4">
                         {% if 'Tersedia' in loker.status %}
-                            <div class="text-success h1"><i class="bi bi-unlock"></i></div>
-                            <span class="badge bg-success mb-2">Available</span>
+                            <div class="text-success display-4 mb-2"><i class="bi bi-unlock"></i></div>
+                            <span class="badge bg-success mb-3 rounded-pill px-3">Available</span>
                         {% else %}
-                            <div class="text-secondary h1"><i class="bi bi-lock-fill"></i></div>
-                            <span class="badge bg-danger mb-2">Booked</span>
+                            <div class="text-secondary display-4 mb-2"><i class="bi bi-lock-fill"></i></div>
+                            <span class="badge bg-danger mb-3 rounded-pill px-3">Booked</span>
                         {% endif %}
-                        
-                        <h5>Loker {{ loker.nomor }}</h5>
-                        <p class="small text-muted">{{ loker.lokasi }}</p>
+                        <h4 class="fw-bold">Loker {{ loker.nomor }}</h4>
+                        <p class="text-muted small"><i class="bi bi-geo-alt"></i> {{ loker.lokasi }}</p>
 
                         {% if 'Tersedia' in loker.status %}
-                             <a href="/book/{{ loker.id }}" class="btn btn-primary w-100 rounded-pill">Booking</a>
+                            {% if user.role == 'admin' or not user.is_subscribed %}
+                                <button type="button" class="btn btn-primary w-100 rounded-pill shadow-sm" 
+                                        data-bs-toggle="modal" data-bs-target="#bookingModal{{ loker.id }}">
+                                    Booking Sekarang
+                                </button>
+                            {% else %}
+                                <button class="btn btn-secondary w-100 rounded-pill" disabled>
+                                    <i class="bi bi-check-circle"></i> Paket Aktif
+                                </button>
+                                <small class="text-muted d-block mt-2">Habiskan paket aktif dulu.</small>
+                            {% endif %}
+
+                            <div class="modal fade text-start" id="bookingModal{{ loker.id }}" tabindex="-1">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <form action="/booking/{{ loker.id }}" method="POST">
+                                            <div class="modal-header bg-primary text-white">
+                                                <h5 class="modal-title">Sewa Loker {{ loker.nomor }}</h5>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="alert alert-info small">Silakan pilih durasi paket berlangganan Anda.</div>
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-bold">Pilih Paket Langganan</label>
+                                                    <select class="form-select" name="paket" id="paket_{{ loker.id }}" onchange="updateHarga('{{ loker.id }}')">
+                                                        <option value="testing" data-harga="1">🧪 Uji Coba (Rp 1)</option>
+                                                        <option value="harian" data-harga="5000">Harian (Rp 5.000)</option>
+                                                        <option value="bulanan" data-harga="100000">Bulanan (Rp 100.000)</option>
+                                                        <option value="semester" data-harga="500000">1 Semester (Rp 500.000)</option>
+                                                    </select>
+                                                </div>
+                                                <div class="d-flex justify-content-between align-items-center border-top pt-3 mt-3">
+                                                    <span class="text-muted">Total Bayar:</span>
+                                                    <h3 class="text-primary fw-bold" id="harga_display_{{ loker.id }}">Rp 1</h3>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                                                <button type="submit" class="btn btn-primary">Lanjut Pembayaran <i class="bi bi-arrow-right"></i></button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
                         {% else %}
-                            <button class="btn btn-secondary w-100 rounded-pill" disabled>Terisi</button>
-                            
+                            <button class="btn btn-secondary w-100 rounded-pill" disabled>Sedang Disewa</button>
                             {% if user.role == 'admin' %}
-                            <a href="/reset-locker/{{ loker.id }}" class="btn btn-outline-danger btn-sm w-100 mt-2">
+                            <a href="/reset-locker/{{ loker.id }}" class="btn btn-outline-danger btn-sm w-100 mt-2" onclick="return confirm('Yakin kosongkan paksa?')">
                                 <i class="bi bi-trash"></i> Kosongkan Paksa
                             </a>
                             {% endif %}
@@ -58,7 +135,64 @@
             </div>
             {% endfor %}
         </div>
-    </div>
+
+        {% if user.role == 'admin' %}
+        <div class="mt-5 mb-5 border-top pt-4">
+            <h3 class="fw-bold text-danger mb-4"><i class="bi bi-speedometer2"></i> Admin Dashboard</h3>
+            
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-white fw-bold">Grafik Pengunjung (7 Hari Terakhir)</div>
+                        <div class="card-body">
+                            <canvas id="visitorChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-white fw-bold">Manajemen User</div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                                <table class="table table-striped mb-0 small">
+                                    <thead class="table-dark sticky-top">
+                                        <tr>
+                                            <th>User</th>
+                                            <th>Status</th>
+                                            <th>Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for u in all_users %}
+                                        <tr>
+                                            <td>{{ u.username }}</td>
+                                            <td>
+                                                {% if u.is_subscribed %}
+                                                    <span class="badge bg-success">Aktif</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">Mati</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if u.is_subscribed %}
+                                                <a href="/admin/unsubscribe/{{ u.id }}" class="text-danger fw-bold text-decoration-none" onclick="return confirm('Cabut?')">
+                                                    Cabut
+                                                </a>
+                                                {% else %} - {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        </div>
 
     <div class="modal fade" id="addModal" tabindex="-1">
         <div class="modal-dialog">
@@ -87,5 +221,49 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        function updateHarga(lokerId) {
+            let selectBox = document.getElementById('paket_' + lokerId);
+            let selectedOption = selectBox.options[selectBox.selectedIndex];
+            let harga = selectedOption.getAttribute('data-harga');
+            let rupiah = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(harga);
+            document.getElementById('harga_display_' + lokerId).innerText = rupiah;
+        }
+
+        // === SCRIPT BUAT GAMBAR GRAFIK ===
+        // Data ini dikirim dari Python (app.py)
+        const labels = {{ chart_labels | tojson }};
+        const data = {{ chart_values | tojson }};
+
+        if (document.getElementById('visitorChart')) {
+            const ctx = document.getElementById('visitorChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line', // Jenis Grafik: Garis
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Jumlah Pengunjung',
+                        data: data,
+                        borderColor: '#0d6efd', // Warna Biru
+                        backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4 // Biar garisnya melengkung mulus
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1 } // Biar sumbu Y angkanya bulat (1, 2, 3...)
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+
 </body>
 </html>

@@ -1,47 +1,49 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Pembayaran DP Loker</title>
+    <title>Konfirmasi Pembayaran</title>
     <script type="text/javascript"
             src="https://app.sandbox.midtrans.com/snap/snap.js"
             data-client-key="{{ client_key }}"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
 </head>
-<body class="p-5 text-center bg-light">
+<body class="p-5 text-center bg-light d-flex align-items-center justify-content-center" style="min-height: 100vh;">
     
-    <div class="card mx-auto shadow" style="width: 22rem;">
-        <div class="card-header bg-primary text-white">
-            <h4>Konfirmasi Booking</h4>
+    <div class="card shadow border-0" style="width: 24rem;">
+        <div class="card-header bg-primary text-white py-3">
+            <h5 class="mb-0 fw-bold">Konfirmasi Pembayaran</h5>
         </div>
-        <div class="card-body">
-            <h5 class="card-title">Loker Nomor {{ loker.nomor }}</h5>
-            <p class="text-muted">{{ loker.lokasi }}</p>
+        <div class="card-body p-4">
+            <h5 class="card-title text-muted mb-1">Sewa Loker {{ loker.nomor }}</h5>
+            <p class="small text-secondary"><i class="bi bi-geo-alt"></i> {{ loker.lokasi }}</p>
             
-            <hr>
-            <div class="d-flex justify-content-between">
-                <span>Total Harga Sewa:</span>
-                <span class="text-decoration-line-through text-muted">Rp {{ harga_full }}</span>
+            <hr class="my-4">
+            
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="text-muted">Total Tagihan:</span>
+                <h3 class="fw-bold text-primary mb-0">Rp {{ amount }}</h3>
             </div>
-            <div class="d-flex justify-content-between fw-bold text-success mt-2">
-                <span>Bayar Sekarang (DP 50%):</span>
-                <span>Rp {{ harga_dp }}</span>
+            
+            <div class="alert alert-info mt-3 small">
+                Paket Langganan akan aktif otomatis setelah pembayaran.
             </div>
-            <hr>
 
-            <button id="pay-button" class="btn btn-warning w-100 fw-bold">BAYAR DP SEKARANG</button>
+            <button id="pay-button" class="btn btn-primary w-100 py-2 fw-bold mt-2 shadow-sm">
+                BAYAR SEKARANG
+            </button>
+            
+            <a href="/dashboard" class="btn btn-link text-decoration-none mt-3 text-muted">Batal & Kembali</a>
         </div>
     </div>
-    
-    <br>
-    <a href="/dashboard" class="text-decoration-none">Batal Booking</a>
 
     <script type="text/javascript">
       var payButton = document.getElementById('pay-button');
       payButton.addEventListener('click', function () {
         window.snap.pay('{{ token }}', {
           onSuccess: function(result){
-            // Kalau sukses, arahkan ke route update database
-            window.location.href = "/payment-success/{{ loker.id }}";
+            // LOGIKA "WE BALL":
+            // Sukses bayar? Langsung lempar ke route finish + bawa ID Loker
+            window.location.href = "/payment-finish/{{ loker.id }}";
           },
           onPending: function(result){
             alert("Menunggu pembayaran...");
@@ -50,7 +52,7 @@
             alert("Pembayaran gagal!");
           },
           onClose: function(){
-            alert('Kamu belum menyelesaikan pembayaran DP!');
+            alert('Anda menutup popup tanpa membayar!');
           }
         });
       });
